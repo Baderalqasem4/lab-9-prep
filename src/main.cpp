@@ -125,25 +125,40 @@ int main() {
         player.update();
         // camera
 
-        // TODO: Remove this line and replace it with code that determines if the player's (center)
-        // is between the two green lines (open space), in the soft exclusion zones (between the
-        // green and red lines), or in the hard exclusion zones (beyond either of the red lines).
-        //
-        // If the player is in the open zone, the camera does not need to move.
-        //
-        // If the player is in the soft exclusion zones, the camera should softly translate over
-        // multiple frames (via an exponential moving average) until the player's center is aligned
-        // with the violated soft boundary. Use SOFT_CAMERA_ALPHA for the alpha value.
-        //
-        // If the player is in the hard exclusion zones, the camera should hard-adjust so that
-        // the player's center is always kept at most *at* the red lines. This means that the
-        // player center must NEVER pass the red lines.
-        //
-        // Use SOFT_LIMIT_PERCENT and HARD_LIMIT_PERCENT to parameterize the green and red
-        // line positions.
-        camera.setCameraCenter({player.position.x, WINDOW_HEIGHT * 0.5f});
+        // get the players center in world coordinates
+        sf::Vector2f playerCenter = player.position;
+        playerCenter.y -= PLAYER_WIDTH / 2;
 
+        // get the players horizontal position
+        float percentX = camera.worldToWindowPercent(playerCenter).x;
+
+        // if player passes the left red line move camera immediately
+        if (percentX < HARD_LIMIT_PERCENT) {
+            camera.translateWindowPercent({percentX - HARD_LIMIT_PERCENT, 0.f});
+        }
+
+        // if player passes the right red line move camera immediately
+        else if (percentX > 1.f - HARD_LIMIT_PERCENT) {
+            camera.translateWindowPercent({percentX - (1.f - HARD_LIMIT_PERCENT), 0.f});
+        }
+
+        // if player is between the left green and red lines
+        else if (percentX < SOFT_LIMIT_PERCENT) {
+            float distance = percentX - SOFT_LIMIT_PERCENT;
+
+            camera.translateWindowPercent({distance * SOFT_CAMERA_ALPHA, 0.f});
+        }
+
+        // if player is between the right green and red lines move smoothly
+        else if (percentX > 1.f - SOFT_LIMIT_PERCENT) {
+            float distance = percentX - (1.f - SOFT_LIMIT_PERCENT);
+
+            camera.translateWindowPercent({distance * SOFT_CAMERA_ALPHA, 0.f});
+        }
+
+        // update world view with the new camera position
         worldView.setCenter(camera.getCameraCenter());
+
         window.clear(sf::Color::Black);
         // world rendering
         window.setView(worldView);
